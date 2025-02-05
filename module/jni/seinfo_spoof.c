@@ -1,12 +1,13 @@
 #include <string.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <android/log.h>
 
 #include "zygisk.h"
+
+#include "apk_sign.h"
 
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, "SeInfoSpoofer", __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "SeInfoSpoofer", __VA_ARGS__)
@@ -121,6 +122,8 @@ void module_postServerSpecialize(void *impl, const ServerSpecializeArgs *args) {
     /* Do nothing */
 }
 
+#define CERT_SHA256_FINGERPRINT "bd94126d9ac1a4e5f1017b70f0414c040ab7800c781e60ae452a33c71080cde6"
+
 void se_info_companion(int fd) {
     int cmd, uid, len;
     char *process = NULL;
@@ -158,9 +161,11 @@ void se_info_companion(int fd) {
         const char *package = delim + 1;
 
         if (strcmp(package, process) == 0) {
-            // TODO: Actually check signature
             LOGD("APK path: \"%s\"", apk);
-            success = true;
+            if (check_apk_signature(apk, CERT_SHA256_FINGERPRINT)) {
+                success = true;
+                break;
+            }
         } else {
             LOGD("Wrong package: %s != %s", package, process);
         }
